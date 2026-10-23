@@ -1,8 +1,8 @@
 node_modules/
 .expo/
 dist/
-ios/
-android/
+/ios/
+/android/
 npm-debug.*
 *.jks
 *.p8
@@ -20,3 +20,7 @@ web-build/
 
 expo-env.d.ts
 # @end expo-cli
+# native module build output
+modules/*/android/build/
+modules/*/android/.gradle/
+modules/*/ios/build/
