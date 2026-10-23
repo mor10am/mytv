@@ -17,7 +17,7 @@ export default function HomeScreen() {
           <AnimatedIcon />
           <ThemedView style={styles.titleContainer}>
             <ThemedText type="title" style={styles.title}>
-              {`Welcome to Expo ${
+              {`Hello ${
                 Platform.isTV ? 'TV' : Platform.OS === 'web' ? 'web' : 'mobile'
               }`}
             </ThemedText>

@@ -11,6 +11,25 @@ The application code is based on the [revamped default project template](https:/
 
 ## 🚀 How to use
 
+### Java for local Android builds
+
+Use **JDK 17** for local Android builds, as recommended by Expo. With Java 25,
+Android's Prefab tool emits a native-access warning that causes CMake
+configuration of `react-native-worklets` and `react-native-screens` to fail.
+
+On Ubuntu, install JDK 17 and select it as the default runtime and JDK:
+
+```sh
+sudo apt-get install openjdk-17-jdk
+sudo update-java-alternatives --set java-1.17.0-openjdk-amd64
+java -version
+javac -version
+```
+
+Both version commands should report 17. If `JAVA_HOME` is set, ensure it also
+points to JDK 17 (on Ubuntu: `/usr/lib/jvm/java-17-openjdk-amd64`) or unset it,
+since Gradle uses `JAVA_HOME` in preference to the default `java` on `PATH`.
+
 #### Creating a new project
 
 - Create a project: `npx create-expo-app -e with-router-tv`
