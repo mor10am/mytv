@@ -15,13 +15,14 @@ This project uses **pnpm** and **Node.js 24 or newer**. Never use npm, yarn or b
 ```bash
 pnpm exec expo install <package>  # ALWAYS use instead of pnpm add — resolves SDK-compatible versions
 pnpm exec expo start              # start the dev server
-pnpm exec expo lint               # lint
-pnpm exec tsc --noEmit            # typecheck
+pnpm lint                         # typecheck + ESLint (fails on any warning)
+pnpm lint:fix                     # auto-fix ESLint issues
+pnpm typecheck                    # typecheck only
 pnpm dlx expo-doctor              # diagnose dependency and config issues
 pnpm exec expo install --fix      # fix incompatible package versions
 ```
 
-Run lint and typecheck before declaring any task done.
+Run `pnpm lint` before declaring any task done.
 
 ## Navigation & Routing
 
