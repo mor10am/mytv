@@ -1,88 +1,75 @@
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
+import { ActivityIndicator, BackHandler, FlatList, StyleSheet } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { AppTile } from '@/components/launcher/app-tile';
+import { TopBar } from '@/components/launcher/top-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
+import { useInstalledApps } from '@/hooks/use-installed-apps';
 import { useScreenDimensions } from '@/hooks/use-screen-dimensions';
+import Launcher from '@/modules/launcher';
 
-export default function HomeScreen() {
-  const styles = useHomeStyles();
+const COLUMNS = 5;
+
+export default function LauncherScreen() {
+  const { apps, loading, supported } = useInstalledApps();
+  const { width, spacing } = useScreenDimensions();
+  const styles = useStyles();
+
+  // This is the home screen: Back should never close it.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
+
+  const gap = spacing.four;
+  const tileWidth = (width - spacing.five * 2 - gap * (COLUMNS - 1)) / COLUMNS;
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedView style={styles.titleContainer}>
-            <ThemedText type="title" style={styles.title}>
-              {`Hello ${
-                Platform.isTV ? 'TV' : Platform.OS === 'web' ? 'web' : 'mobile'
-              }`}
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
+      <TopBar />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow title="Try editing" hint="src/app/index.tsx" />
-          <HintRow title="Dev tools" hint="cmd+d" />
-          <HintRow title="Fresh start" hint="npm run reset-project" />
-        </ThemedView>
-
-        <WebBadge />
-      </SafeAreaView>
+      {!supported ? (
+        <ThemedText style={styles.message}>App list is only available on Android.</ThemedText>
+      ) : loading ? (
+        <ActivityIndicator style={styles.message} />
+      ) : (
+        <FlatList
+          data={apps}
+          keyExtractor={(app) => app.packageName}
+          numColumns={COLUMNS}
+          contentContainerStyle={styles.grid}
+          columnWrapperStyle={{ gap }}
+          ListHeaderComponent={<ThemedText type="smallBold">Apps</ThemedText>}
+          renderItem={({ item, index }) => (
+            <AppTile
+              app={item}
+              width={tileWidth}
+              preferredFocus={index === 0}
+              onPress={() => Launcher?.launchApp(item.packageName, item.activityName)}
+            />
+          )}
+        />
+      )}
     </ThemedView>
   );
 }
 
-const useHomeStyles = () => {
-  const { spacing, width, landscape } = useScreenDimensions();
-
+const useStyles = () => {
+  const { spacing } = useScreenDimensions();
   return StyleSheet.create({
     container: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      width,
     },
-    safeArea: {
-      marginTop: landscape ? spacing.six : 0,
-      marginBottom: landscape ? spacing.two : spacing.six,
-      paddingHorizontal: spacing.four,
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: spacing.three,
-      maxWidth: width * 0.8,
+    grid: {
+      paddingHorizontal: spacing.five,
+      paddingTop: spacing.two,
+      paddingBottom: spacing.five,
+      gap: spacing.four,
     },
-    heroSection: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      flex: 1,
-      paddingHorizontal: spacing.four,
-      gap: landscape ? spacing.one : spacing.four,
-      marginBottom: landscape ? spacing.four : spacing.six,
-    },
-    titleContainer: {
-      marginTop: landscape ? spacing.two : 0,
-    },
-    title: {
+    message: {
+      marginTop: spacing.six,
       textAlign: 'center',
-    },
-    code: {
-      lineHeight: spacing.four,
-      textTransform: 'uppercase',
-    },
-    stepContainer: {
-      gap: spacing.three,
-      alignSelf: 'stretch',
-      paddingHorizontal: spacing.three,
-      paddingVertical: spacing.four,
-      borderRadius: spacing.four,
     },
   });
 };
