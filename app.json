@@ -5,7 +5,7 @@
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.anonymous.mytv"
+      "bundleIdentifier": "com.amundsenhq.mytv"
     },
     "android": {
       "adaptiveIcon": {
@@ -15,7 +15,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mytv"
+      "package": "com.amundsenhq.mytv"
     },
     "web": {
       "output": "static",
@@ -62,6 +62,7 @@
       "reactCompiler": true
     },
     "name": "mytv",
-    "slug": "mytv"
+    "slug": "mytv",
+    "scheme": "mytv"
   }
 }
