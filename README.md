@@ -13,8 +13,8 @@ Built with Expo (SDK 57), Expo Router and [react-native-tvos](https://github.com
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| Node.js | 20 or newer | |
-| pnpm | 10 or newer | `npm install -g pnpm` |
+| Node.js | **24** or newer | `.nvmrc` pins 24. Older versions are rejected on install. |
+| pnpm | 10 or newer | `npm install -g pnpm`. npm, yarn and bun are rejected on install. |
 | JDK | **17** | Newer JDKs break the native build (see below). |
 | Android SDK | Platform 36, platform-tools | Install with Android Studio or the command-line tools. Put `platform-tools` (`adb`) on your `PATH` and set `ANDROID_HOME`. |
 | Device | Android TV, Android 7.0 (API 24) or newer | An Android TV emulator or a real TV with USB or network debugging turned on. |

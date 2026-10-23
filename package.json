@@ -2,7 +2,12 @@
   "name": "mytv",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -11,7 +16,7 @@
     "lint": "expo lint",
     "prebuild": "expo prebuild --clean",
     "prebuild:tv": "EXPO_TV=1 expo prebuild --clean",
-    "deploy": "npx expo export -p web && npx eas-cli@latest deploy"
+    "deploy": "pnpm exec expo export -p web && pnpm dlx eas-cli@latest deploy"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -30,6 +35,7 @@
     "expo-symbols": "~57.0.2",
     "expo-system-ui": "~57.0.2",
     "expo-web-browser": "~57.0.2",
+    "only-allow": "^1.2.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "npm:react-native-tvos@0.86-stable",
@@ -43,6 +49,8 @@
   "devDependencies": {
     "@react-native-tvos/config-tv": "^0.1.6",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
   "private": true
