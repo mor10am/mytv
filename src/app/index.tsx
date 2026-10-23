@@ -1,20 +1,35 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, BackHandler, FlatList, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  BackHandler,
+  FlatList,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
-import { AppTile } from '@/components/launcher/app-tile';
-import { TopBar } from '@/components/launcher/top-bar';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AmigaText } from '@/components/amiga/amiga-text';
+import { ScreenBar } from '@/components/amiga/screen-bar';
+import { AmigaWindow, type ScrollPosition } from '@/components/amiga/window';
+import { DesktopIcon } from '@/components/launcher/desktop-icon';
+import { Amiga } from '@/constants/amiga';
+import { useAmigaMetrics } from '@/hooks/use-amiga-metrics';
 import { useInstalledApps } from '@/hooks/use-installed-apps';
-import { useScreenDimensions } from '@/hooks/use-screen-dimensions';
-import Launcher from '@/modules/launcher';
+import Launcher, { type InstalledApp } from '@/modules/launcher';
 
-const COLUMNS = 5;
+const COLUMNS = 6;
+
+type DesktopItem = { kind: 'app'; app: InstalledApp } | { kind: 'prefs' };
 
 export default function LauncherScreen() {
   const { apps, loading, supported } = useInstalledApps();
-  const { width, spacing } = useScreenDimensions();
-  const styles = useStyles();
+  const { spacing } = useAmigaMetrics();
+  const [gridWidth, setGridWidth] = useState(0);
+  const { scroll, onLayout, onScroll, onContentSizeChange } = useScrollPosition();
 
   // This is the home screen: Back should never close it.
   useEffect(() => {
@@ -22,54 +37,143 @@ export default function LauncherScreen() {
     return () => sub.remove();
   }, []);
 
-  const gap = spacing.four;
-  const tileWidth = (width - spacing.five * 2 - gap * (COLUMNS - 1)) / COLUMNS;
+  // Apps first, then a Prefs icon that opens Android settings.
+  const items = useMemo<DesktopItem[]>(
+    () => [
+      ...apps.map((app) => ({ kind: 'app' as const, app })),
+      ...(Launcher ? [{ kind: 'prefs' as const }] : []),
+    ],
+    [apps],
+  );
 
-  return (
-    <ThemedView style={styles.container}>
-      <TopBar />
+  const cellWidth = (gridWidth - spacing.three * 2) / COLUMNS;
 
-      {!supported ? (
-        <ThemedText style={styles.message}>App list is only available on Android.</ThemedText>
-      ) : loading ? (
-        <ActivityIndicator style={styles.message} />
-      ) : (
-        <FlatList
-          data={apps}
-          keyExtractor={(app) => app.packageName}
-          numColumns={COLUMNS}
-          contentContainerStyle={styles.grid}
-          columnWrapperStyle={{ gap }}
-          ListHeaderComponent={<ThemedText type="smallBold">Apps</ThemedText>}
-          renderItem={({ item, index }) => (
-            <AppTile
-              app={item}
-              width={tileWidth}
-              preferredFocus={index === 0}
-              onPress={() => Launcher?.launchApp(item.packageName, item.activityName)}
+  const renderItem = useCallback(
+    ({ item, index }: { item: DesktopItem; index: number }) =>
+      item.kind === 'app' ? (
+        <DesktopIcon
+          label={item.app.label}
+          width={cellWidth}
+          preferredFocus={index === 0}
+          onPress={() => Launcher?.launchApp(item.app.packageName, item.app.activityName)}
+        >
+          {(size) => (
+            <Image
+              source={{ uri: item.app.icon ?? item.app.banner ?? undefined }}
+              style={{ width: size, height: size }}
+              contentFit="contain"
             />
           )}
-        />
-      )}
-    </ThemedView>
+        </DesktopIcon>
+      ) : (
+        <DesktopIcon
+          label="Prefs"
+          width={cellWidth}
+          preferredFocus={index === 0}
+          onPress={() => Launcher?.openSettings()}
+        >
+          {(size, focused) => (
+            <Ionicons
+              name="settings-sharp"
+              size={size * 0.8}
+              color={focused ? Amiga.white : Amiga.black}
+            />
+          )}
+        </DesktopIcon>
+      ),
+    [cellWidth],
+  );
+
+  return (
+    <View style={styles.screen}>
+      <ScreenBar appCount={apps.length} />
+
+      <AmigaWindow title="Workbench" scroll={scroll}>
+        <View
+          style={styles.content}
+          onLayout={(e) => {
+            setGridWidth(e.nativeEvent.layout.width);
+            onLayout(e);
+          }}
+        >
+          {!supported ? (
+            <AmigaText style={[styles.message, { marginTop: spacing.six }]}>
+              App list is only available on Android.
+            </AmigaText>
+          ) : loading ? (
+            <ActivityIndicator color={Amiga.black} style={{ marginTop: spacing.six }} />
+          ) : gridWidth > 0 ? (
+            <FlatList
+              data={items}
+              keyExtractor={(item) => (item.kind === 'app' ? item.app.packageName : 'prefs')}
+              numColumns={COLUMNS}
+              contentContainerStyle={{ padding: spacing.three }}
+              renderItem={renderItem}
+              onScroll={onScroll}
+              scrollEventThrottle={32}
+              onContentSizeChange={onContentSizeChange}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : null}
+        </View>
+      </AmigaWindow>
+    </View>
   );
 }
 
-const useStyles = () => {
-  const { spacing } = useScreenDimensions();
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    grid: {
-      paddingHorizontal: spacing.five,
-      paddingTop: spacing.two,
-      paddingBottom: spacing.five,
-      gap: spacing.four,
-    },
-    message: {
-      marginTop: spacing.six,
-      textAlign: 'center',
-    },
-  });
-};
+/** Tracks which part of the list is visible, for the window's scrollbar knob. */
+function useScrollPosition() {
+  const [scroll, setScroll] = useState<ScrollPosition>({ start: 0, size: 1 });
+  const metrics = useRef({ offset: 0, content: 0, visible: 0 });
+
+  const update = useCallback(() => {
+    const { offset, content, visible } = metrics.current;
+    if (content <= 0 || visible <= 0) return;
+    const size = Math.min(1, visible / content);
+    const start = Math.min(1 - size, Math.max(0, offset / content));
+    // Skip tiny changes so scrolling doesn't re-render on every frame.
+    setScroll((prev) =>
+      Math.abs(prev.start - start) < 0.005 && Math.abs(prev.size - size) < 0.005
+        ? prev
+        : { start, size },
+    );
+  }, []);
+
+  return {
+    scroll,
+    onLayout: useCallback(
+      (e: LayoutChangeEvent) => {
+        metrics.current.visible = e.nativeEvent.layout.height;
+        update();
+      },
+      [update],
+    ),
+    onScroll: useCallback(
+      (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        metrics.current.offset = e.nativeEvent.contentOffset.y;
+        update();
+      },
+      [update],
+    ),
+    onContentSizeChange: useCallback(
+      (_w: number, h: number) => {
+        metrics.current.content = h;
+        update();
+      },
+      [update],
+    ),
+  };
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: Amiga.gray,
+  },
+  content: {
+    flex: 1,
+  },
+  message: {
+    textAlign: 'center',
+  },
+});
