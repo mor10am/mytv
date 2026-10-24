@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { AmigaText } from '@/components/amiga/amiga-text';
-import { BoingBall } from '@/components/amiga/boing-ball';
+// import { BoingBall } from '@/components/amiga/boing-ball';
 import { ScreenBar } from '@/components/amiga/screen-bar';
 import { ShellWindow } from '@/components/amiga/shell-window';
 import { AmigaWindow, type ScrollPosition } from '@/components/amiga/window';
@@ -125,7 +125,7 @@ export default function LauncherScreen() {
       </View>
 
       {/* Drawn before the shell window so the ball bounces behind it. */}
-      <BoingBall />
+      {/* <BoingBall /> */}
 
       <View style={styles.shell}>
         <ShellWindow />
