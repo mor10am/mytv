@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AmigaText } from '@/components/amiga/amiga-text';
+import { BoingBall } from '@/components/amiga/boing-ball';
 import { ScreenBar } from '@/components/amiga/screen-bar';
 import { AmigaWindow, type ScrollPosition } from '@/components/amiga/window';
 import { DesktopIcon } from '@/components/launcher/desktop-icon';
@@ -117,6 +118,8 @@ export default function LauncherScreen() {
           ) : null}
         </View>
       </AmigaWindow>
+
+      <BoingBall />
     </View>
   );
 }
