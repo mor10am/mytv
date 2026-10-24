@@ -17,7 +17,8 @@
     "lint:fix": "expo lint --fix",
     "prebuild": "expo prebuild --clean",
     "prebuild:tv": "EXPO_TV=1 expo prebuild --clean",
-    "deploy": "pnpm exec expo export -p web && pnpm dlx eas-cli@latest deploy"
+    "deploy": "pnpm exec expo export -p web && pnpm dlx eas-cli@latest deploy",
+    "prepare": "husky"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -53,6 +54,7 @@
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "typescript": "~6.0.3"
   },
   "private": true
