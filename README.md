@@ -58,7 +58,8 @@ The script:
 4. Installs the APK on the device.
 5. Makes mytv the home app.
 6. Turns off the stock launcher (Android TV's `com.google.android.tvlauncher`, Google TV's `com.google.android.apps.tv.launcherx` or AOSP's `com.google.android.leanbacklauncher`), so Home always opens mytv.
-7. Presses Home and checks that mytv opens.
+7. Turns off Google Assistant (`com.google.android.katniss`, and the Google app `com.google.android.googlequicksearchbox` if present) and blocks its microphone access, so the TV never listens for "Hey Google". The microphone button on the remote stops doing voice search too.
+8. Presses Home and checks that mytv opens.
 
 Options:
 
@@ -68,7 +69,7 @@ Options:
 | `--apk PATH` | Install an APK you already have, such as one from an EAS build, instead of building one. |
 | `--debug` | Build a debug APK. It loads JavaScript from Metro, so run `pnpm start` as well. |
 | `--skip-build` | Install the APK from the last build. |
-| `--restore` | Undo: turn the stock launcher back on and make it the home app again. mytv stays installed. |
+| `--restore` | Undo: turn the stock launcher and Google Assistant back on and make the stock launcher the home app again. mytv stays installed. |
 
 Example: `scripts/install-launcher.sh -s emulator-5554`
 
@@ -84,6 +85,11 @@ EXPO_TV=1 pnpm exec expo prebuild --clean --platform android
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 adb shell cmd package set-home-activity com.amundsenhq.mytv/.MainActivity
 adb shell pm disable-user --user 0 com.google.android.tvlauncher
+adb shell cmd role remove-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss
+adb shell appops set --uid com.google.android.katniss RECORD_AUDIO ignore
+adb shell pm disable-user --user 0 com.google.android.katniss
+adb shell settings put secure voice_interaction_service "''"
+adb shell settings put secure assistant "''"
 adb shell input keyevent KEYCODE_HOME
 ```
 
@@ -92,7 +98,12 @@ To undo:
 ```sh
 adb shell pm enable com.google.android.tvlauncher
 adb shell cmd package set-home-activity com.google.android.tvlauncher/.MainActivity
+adb shell pm enable com.google.android.katniss
+adb shell appops set --uid com.google.android.katniss RECORD_AUDIO foreground
+adb shell cmd role add-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss
 ```
+
+`adb shell dumpsys voiceinteraction` shows `(No active implementation)` when no voice assistant is running.
 
 If Android doesn't accept `set-home-activity`, press Home on the device and choose mytv when it asks.
 

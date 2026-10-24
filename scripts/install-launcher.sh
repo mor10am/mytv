@@ -12,12 +12,19 @@ STOCK_LAUNCHERS=(
   com.google.android.leanbacklauncher    # older Android TV / AOSP
 )
 
+# Google Assistant apps we turn off so the TV never listens for "Hey Google".
+VOICE_ASSISTANTS=(
+  com.google.android.katniss             # Android TV / Google TV assistant
+  com.google.android.googlequicksearchbox  # Google app, on some TVs
+)
+ASSISTANT_ROLE=android.app.role.ASSISTANT
+
 usage() {
   cat <<'EOF'
 Usage: scripts/install-launcher.sh [options]
 
 Builds mytv, installs it on a device, makes it the home app and turns off
-the stock launcher.
+the stock launcher and Google Assistant ("Hey Google").
 
 Options:
   -s, --serial SERIAL  Device to use (as shown by `adb devices`).
@@ -27,8 +34,9 @@ Options:
       --debug          Build a debug APK instead of release. Debug builds load
                        JavaScript from Metro, so run `pnpm start` too.
       --skip-build     Install the APK from the last build without rebuilding.
-      --restore        Undo: turn the stock launcher back on and make it the
-                       home app again. mytv stays installed.
+      --restore        Undo: turn the stock launcher and Google Assistant back
+                       on and make the stock launcher the home app again.
+                       mytv stays installed.
   -h, --help           Show this help.
 EOF
 }
@@ -108,6 +116,17 @@ if [[ $RESTORE -eq 1 ]]; then
     restored="${restored:-$pkg}"
   done
   [[ -n "$restored" ]] || die "no known stock launcher found on this device"
+
+  step "Turning Google Assistant back on"
+  for pkg in "${VOICE_ASSISTANTS[@]}"; do
+    installed "$pkg" || continue
+    "${ADB[@]}" shell pm enable "$pkg" >/dev/null
+    "${ADB[@]}" shell appops set --uid "$pkg" RECORD_AUDIO foreground || true
+    # Making it the assistant again also restores the voice settings.
+    "${ADB[@]}" shell cmd role add-role-holder --user 0 "$ASSISTANT_ROLE" "$pkg" || true
+    echo "enabled $pkg"
+  done
+
   activity=$("${ADB[@]}" shell cmd package resolve-activity --brief \
     -a android.intent.action.MAIN -c android.intent.category.HOME "$restored" | tail -1 | tr -d '\r')
   "${ADB[@]}" shell cmd package set-home-activity "$activity" >/dev/null \
@@ -156,6 +175,27 @@ for pkg in "${STOCK_LAUNCHERS[@]}"; do
     echo "could not disable $pkg (this device may not allow it)"
   fi
 done
+
+step "Turning off Google Assistant (\"Hey Google\")"
+for pkg in "${VOICE_ASSISTANTS[@]}"; do
+  installed "$pkg" || continue
+  "${ADB[@]}" shell cmd role remove-role-holder --user 0 "$ASSISTANT_ROLE" "$pkg" || true
+  # Block the microphone too, in case the app gets turned back on.
+  "${ADB[@]}" shell appops set --uid "$pkg" RECORD_AUDIO ignore || true
+  if "${ADB[@]}" shell pm disable-user --user 0 "$pkg" >/dev/null 2>&1; then
+    echo "disabled $pkg"
+  else
+    echo "could not disable $pkg (this device may not allow it)"
+  fi
+done
+# No voice assistant at all, so nothing listens for the hotword.
+"${ADB[@]}" shell settings put secure voice_interaction_service "''"
+"${ADB[@]}" shell settings put secure assistant "''"
+if "${ADB[@]}" shell dumpsys voiceinteraction | grep -q "No active implementation"; then
+  echo "No voice assistant is active."
+else
+  echo "A voice assistant is still active. Check: adb shell dumpsys voiceinteraction"
+fi
 
 step "Checking"
 "${ADB[@]}" shell input keyevent KEYCODE_HOME
