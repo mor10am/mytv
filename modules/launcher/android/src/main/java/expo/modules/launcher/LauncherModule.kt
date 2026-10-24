@@ -71,9 +71,11 @@ class LauncherModule : Module() {
     }
 
     OnStartObserving(APPS_CHANGED) {
+      unregisterPackageReceiver()
       val receiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-          sendEvent(APPS_CHANGED)
+          // The module can be torn down (e.g. JS reload) before the receiver is removed.
+          runCatching { sendEvent(APPS_CHANGED) }
         }
       }
       val filter = IntentFilter().apply {
@@ -92,9 +94,19 @@ class LauncherModule : Module() {
     }
 
     OnStopObserving(APPS_CHANGED) {
-      packageReceiver?.let { runCatching { context.unregisterReceiver(it) } }
-      packageReceiver = null
+      unregisterPackageReceiver()
     }
+
+    // OnStopObserving isn't called when the React context is destroyed, so clean up here too.
+    OnDestroy {
+      unregisterPackageReceiver()
+    }
+  }
+
+  private fun unregisterPackageReceiver() {
+    val receiver = packageReceiver ?: return
+    packageReceiver = null
+    runCatching { appContext.reactContext?.unregisterReceiver(receiver) }
   }
 
   private fun getInstalledApps(): List<Map<String, Any?>> {
