@@ -14,7 +14,9 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Environment
+import android.os.Process
 import android.os.StatFs
+import android.os.SystemClock
 import android.provider.Settings
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
@@ -62,6 +64,14 @@ class LauncherModule : Module() {
         "availBytes" to stat.availableBytes.toDouble(),
         "totalBytes" to stat.totalBytes.toDouble(),
       )
+    }
+
+    // Cumulative idle and total CPU time; two samples give CPU usage. Falls back to this
+    // app's own CPU time when the device exposes no system-wide counters.
+    AsyncFunction("getCpuSample") {
+      val system = readProcStat() ?: readProcUptime() ?: readCpuIdle()
+      val (idle, total) = system ?: readOwnCpu()
+      mapOf("idle" to idle, "total" to total, "scope" to if (system != null) "system" else "self")
     }
 
     Function("openSettings") {
@@ -146,6 +156,40 @@ class LauncherModule : Module() {
         )
       }
       .sortedBy { (it["label"] as String).lowercase() }
+  }
+
+  // Apps may only read these on some devices: SELinux usually blocks /proc/stat and
+  // /proc/uptime since Android 8. All values are (idle, total) in arbitrary but matching units.
+
+  private fun readProcStat(): Pair<Double, Double>? = runCatching {
+    // "cpu  user nice system idle iowait irq softirq steal ..." in jiffies.
+    val fields = File("/proc/stat").useLines { it.first() }
+      .trim().split(Regex("\\s+")).drop(1).take(8).map { it.toDouble() }
+    Pair(fields[3] + fields[4], fields.sum())
+  }.getOrNull()
+
+  private fun readProcUptime(): Pair<Double, Double>? = runCatching {
+    // "uptime idle" in seconds; idle is summed over all cores.
+    val (uptime, idle) = File("/proc/uptime").readText().trim().split(Regex("\\s+"))
+    Pair(idle.toDouble(), uptime.toDouble() * Runtime.getRuntime().availableProcessors())
+  }.getOrNull()
+
+  private fun readCpuIdle(): Pair<Double, Double>? = runCatching {
+    // Time each core spent in its idle states, in microseconds, against wall time.
+    val cores = File("/sys/devices/system/cpu").listFiles { f -> f.name.matches(Regex("cpu\\d+")) }
+      ?.mapNotNull { File(it, "cpuidle").listFiles { s -> s.name.startsWith("state") } }
+      ?.filter { it.isNotEmpty() }
+      .orEmpty()
+    if (cores.isEmpty()) return@runCatching null
+    val idle = cores.sumOf { states -> states.sumOf { File(it, "time").readText().trim().toDouble() } }
+    val now = SystemClock.elapsedRealtimeNanos() / 1000.0
+    Pair(idle, now * cores.size)
+  }.getOrNull()
+
+  private fun readOwnCpu(): Pair<Double, Double> {
+    // CPU time used by this process against wall time on all cores, in milliseconds.
+    val total = SystemClock.elapsedRealtime().toDouble() * Runtime.getRuntime().availableProcessors()
+    return Pair(total - Process.getElapsedCpuTime(), total)
   }
 
   // Writes the drawable as a PNG (once per app version) and returns its file:// URI.

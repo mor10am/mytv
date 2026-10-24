@@ -26,6 +26,16 @@ export type StorageInfo = {
   totalBytes: number;
 };
 
+/** Cumulative CPU counters; compare two samples to get usage. Units vary by source. */
+export type CpuSample = {
+  /** Idle time across all cores. */
+  idle: number;
+  /** Total time across all cores, in the same unit as `idle`. */
+  total: number;
+  /** "system" for whole-device usage, "self" when only this app's own usage is readable. */
+  scope: 'system' | 'self';
+};
+
 type LauncherEvents = {
   onAppsChanged: () => void;
 };
@@ -35,6 +45,7 @@ declare class LauncherModule extends NativeModule<LauncherEvents> {
   launchApp(packageName: string, activityName: string): void;
   getMemoryInfo(): Promise<MemoryInfo>;
   getStorageInfo(): Promise<StorageInfo>;
+  getCpuSample(): Promise<CpuSample>;
   openSettings(): void;
 }
 

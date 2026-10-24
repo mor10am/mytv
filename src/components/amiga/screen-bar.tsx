@@ -26,11 +26,12 @@ function formatBytes(bytes: number) {
 export function ScreenBar({ appCount }: { appCount: number }) {
   const now = useClock();
   const { gadget, line, spacing } = useAmigaMetrics();
-  const { freeMemory, freeDisk } = useSystemStats();
+  const { freeMemory, freeDisk, cpuPercent, cpuScope } = useSystemStats();
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const parts = [
     'Amiga Workbench',
     `${appCount} apps`,
+    cpuPercent != null && `${cpuPercent}% ${cpuScope === 'self' ? 'own cpu' : 'cpu'}`,
     freeMemory != null && `${formatBytes(freeMemory)} free mem`,
     freeDisk != null && `${formatBytes(freeDisk)} free disk`,
     time,
