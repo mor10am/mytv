@@ -10,6 +10,22 @@ export type InstalledApp = {
   icon: string | null;
 };
 
+export type MemoryInfo = {
+  /** Bytes available to apps, as reported by ActivityManager. */
+  availMem: number;
+  /** Total bytes of RAM usable by the kernel. */
+  totalMem: number;
+  /** True when the system considers itself low on memory. */
+  lowMemory: boolean;
+};
+
+export type StorageInfo = {
+  /** Bytes free for apps on the internal data partition. */
+  availBytes: number;
+  /** Size in bytes of the internal data partition. */
+  totalBytes: number;
+};
+
 type LauncherEvents = {
   onAppsChanged: () => void;
 };
@@ -17,6 +33,8 @@ type LauncherEvents = {
 declare class LauncherModule extends NativeModule<LauncherEvents> {
   getInstalledApps(): Promise<InstalledApp[]>;
   launchApp(packageName: string, activityName: string): void;
+  getMemoryInfo(): Promise<MemoryInfo>;
+  getStorageInfo(): Promise<StorageInfo>;
   openSettings(): void;
 }
 

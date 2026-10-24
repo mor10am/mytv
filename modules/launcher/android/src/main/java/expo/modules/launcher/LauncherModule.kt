@@ -1,5 +1,6 @@
 package expo.modules.launcher
 
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -12,6 +13,8 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
 import android.provider.Settings
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
@@ -41,6 +44,24 @@ class LauncherModule : Module() {
         .setComponent(ComponentName(packageName, activityName))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
       context.startActivity(intent)
+    }
+
+    AsyncFunction("getMemoryInfo") {
+      val info = ActivityManager.MemoryInfo()
+      (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(info)
+      mapOf(
+        "availMem" to info.availMem.toDouble(),
+        "totalMem" to info.totalMem.toDouble(),
+        "lowMemory" to info.lowMemory,
+      )
+    }
+
+    AsyncFunction("getStorageInfo") {
+      val stat = StatFs(Environment.getDataDirectory().path)
+      mapOf(
+        "availBytes" to stat.availableBytes.toDouble(),
+        "totalBytes" to stat.totalBytes.toDouble(),
+      )
     }
 
     Function("openSettings") {
