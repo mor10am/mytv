@@ -15,10 +15,12 @@ import {
 import { AmigaText } from '@/components/amiga/amiga-text';
 import { BoingBall } from '@/components/amiga/boing-ball';
 import { ScreenBar } from '@/components/amiga/screen-bar';
+import { ShellWindow } from '@/components/amiga/shell-window';
 import { AmigaWindow, type ScrollPosition } from '@/components/amiga/window';
 import { DesktopIcon } from '@/components/launcher/desktop-icon';
 import { Amiga } from '@/constants/amiga';
 import { useAmigaMetrics } from '@/hooks/use-amiga-metrics';
+import { useBootMessages } from '@/hooks/use-boot-messages';
 import { useInstalledApps } from '@/hooks/use-installed-apps';
 import Launcher, { type InstalledApp } from '@/modules/launcher';
 
@@ -31,6 +33,7 @@ export default function LauncherScreen() {
   const { spacing } = useAmigaMetrics();
   const [gridWidth, setGridWidth] = useState(0);
   const { scroll, onLayout, onScroll, onContentSizeChange } = useScrollPosition();
+  useBootMessages({ appCount: apps.length, loading, supported });
 
   // This is the home screen: Back should never close it.
   useEffect(() => {
@@ -89,37 +92,44 @@ export default function LauncherScreen() {
     <View style={styles.screen}>
       <ScreenBar appCount={apps.length} />
 
-      <AmigaWindow title="Workbench" scroll={scroll}>
-        <View
-          style={styles.content}
-          onLayout={(e) => {
-            setGridWidth(e.nativeEvent.layout.width);
-            onLayout(e);
-          }}
-        >
-          {!supported ? (
-            <AmigaText style={[styles.message, { marginTop: spacing.six }]}>
-              App list is only available on Android.
-            </AmigaText>
-          ) : loading ? (
-            <ActivityIndicator color={Amiga.black} style={{ marginTop: spacing.six }} />
-          ) : gridWidth > 0 ? (
-            <FlatList
-              data={items}
-              keyExtractor={(item) => (item.kind === 'app' ? item.app.packageName : 'prefs')}
-              numColumns={COLUMNS}
-              contentContainerStyle={{ padding: spacing.three }}
-              renderItem={renderItem}
-              onScroll={onScroll}
-              scrollEventThrottle={32}
-              onContentSizeChange={onContentSizeChange}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : null}
-        </View>
-      </AmigaWindow>
+      <View style={styles.workbench}>
+        <AmigaWindow title="Workbench" scroll={scroll}>
+          <View
+            style={styles.content}
+            onLayout={(e) => {
+              setGridWidth(e.nativeEvent.layout.width);
+              onLayout(e);
+            }}
+          >
+            {!supported ? (
+              <AmigaText style={[styles.message, { marginTop: spacing.six }]}>
+                App list is only available on Android.
+              </AmigaText>
+            ) : loading ? (
+              <ActivityIndicator color={Amiga.black} style={{ marginTop: spacing.six }} />
+            ) : gridWidth > 0 ? (
+              <FlatList
+                data={items}
+                keyExtractor={(item) => (item.kind === 'app' ? item.app.packageName : 'prefs')}
+                numColumns={COLUMNS}
+                contentContainerStyle={{ padding: spacing.three }}
+                renderItem={renderItem}
+                onScroll={onScroll}
+                scrollEventThrottle={32}
+                onContentSizeChange={onContentSizeChange}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : null}
+          </View>
+        </AmigaWindow>
+      </View>
 
+      {/* Drawn before the shell window so the ball bounces behind it. */}
       <BoingBall />
+
+      <View style={styles.shell}>
+        <ShellWindow />
+      </View>
     </View>
   );
 }
@@ -172,6 +182,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Amiga.gray,
+  },
+  workbench: {
+    flex: 3,
+  },
+  shell: {
+    flex: 1,
   },
   content: {
     flex: 1,
